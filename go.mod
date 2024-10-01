@@ -1,6 +1,6 @@
 module 0byte
 
-go 1.23.1
+go 1.19
 
 require (
 	github.com/bwesterb/go-ristretto v1.2.3
