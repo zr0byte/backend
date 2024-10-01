@@ -1,11 +1,9 @@
-package zkp
+package proofsvc
 
 import (
-	"0byte/models"
-	"fmt"
+	"errors"
 	"math/big"
 
-	"github.com/bwesterb/go-ristretto"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -31,16 +29,16 @@ func floatToBigInt(f float64) *big.Int {
 	return result
 }
 
-func GenerateZKProof(req models.ProofRequestObject) (models.ZKProofResponse, error) {
-	var response models.ZKProofResponse
+func generateZKProof(req ProofRequestObject) (groth16.Proof, error) {
+	var proof groth16.Proof
 
 	// Convert float64 amounts to big.Int for precise arithmetic
-	senderBalance := floatToBigInt(req.SendersBalance)
-	amount := floatToBigInt(req.Amount)
+	senderBalance := uint64ToBigInt(req.SendersBalance)
+	amount := solToLamports(req.Amount)
 
 	// Check if the sender has enough balance
 	if senderBalance.Cmp(amount) < 0 {
-		return response, fmt.Errorf("insufficient balance")
+		return proof, errors.New("insufficient balance")
 	}
 
 	// Define the circuit with the balance and amount as variables
@@ -49,13 +47,13 @@ func GenerateZKProof(req models.ProofRequestObject) (models.ZKProofResponse, err
 	// Compile the circuit to R1CS (Rank-1 Constraint System)
 	r1cs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
 	if err != nil {
-		return response, fmt.Errorf("error compiling circuit: %v", err)
+		return proof, err
 	}
 
 	// Generate the proving and verifying keys
 	pk, vk, err := groth16.Setup(r1cs)
 	if err != nil {
-		return response, fmt.Errorf("error setting up proving key: %v", err)
+		return proof, err
 	}
 
 	assignment := BalanceCircuit{
@@ -66,51 +64,45 @@ func GenerateZKProof(req models.ProofRequestObject) (models.ZKProofResponse, err
 	// Create witness (inputs for the circuit)
 	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
 	if err != nil {
-		return response, fmt.Errorf("error creating witness: %v", err)
+		return proof, err
 	}
 
 	// Generate the zkSNARK proof
-	proof, err := groth16.Prove(r1cs, pk, witness)
+	proof, err = groth16.Prove(r1cs, pk, witness)
 	if err != nil {
-		return response, fmt.Errorf("error generating proof: %v", err)
+		return proof, err
 	}
 
 	// Verify the proof
 	publicWitness, err := witness.Public()
 	if err != nil {
-		return response, fmt.Errorf("error creating public witness: %v", err)
+		return proof, err
 	}
 
 	err = groth16.Verify(proof, vk, publicWitness)
 	if err != nil {
-		return response, fmt.Errorf("proof verification failed: %v", err)
+		return proof, err
 	}
 
-	// Commitments (using your commitment functions)
-	rSender := new(ristretto.Scalar)
-	rReceiver := new(ristretto.Scalar)
-	rAmount := new(ristretto.Scalar)
-	rSender.Rand()
-	rReceiver.Rand()
-	rAmount.Rand()
-	H := generateH()
+	return proof, nil
+}
 
-	var senderAmountScalar, receiverAmountScalar ristretto.Scalar
+func solToLamports(sol float64) *big.Int {
+	// Create a big.Float to represent SOL
+	solAmount := new(big.Float).SetFloat64(sol)
 
-	// Set the amount as a scalar
-	senderAmountScalar.SetBigInt(amount)
-	receiverAmountScalar.SetBigInt(amount)
+	// Define 1 SOL = 1,000,000,000 lamports
+	lamportsPerSol := new(big.Float).SetFloat64(1e9)
 
-	// Commit to sender and receiver
-	senderCommit := commitTo(&H, rSender, &senderAmountScalar)
-	receiverCommit := commitTo(&H, rReceiver, &receiverAmountScalar)
+	// Multiply SOL by 1e9 to get lamports
+	lamports := new(big.Float).Mul(solAmount, lamportsPerSol)
 
-	// Convert commitments to strings (using proper encoding)
-	response.SenderCommit = senderCommit.String()
-	response.ReceiverCommit = receiverCommit.String()
+	// Convert the result to big.Int for precision
+	lamportsInt := new(big.Int)
+	lamports.Int(lamportsInt) // Truncate to integer
+	return lamportsInt
+}
 
-	// Attach the zkSNARK proof
-	response.Proof = proof
-
-	return response, nil
+func uint64ToBigInt(n uint64) *big.Int {
+	return new(big.Int).SetUint64(n)
 }

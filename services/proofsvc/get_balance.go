@@ -1,8 +1,7 @@
-package helpers
+package proofsvc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
@@ -13,11 +12,9 @@ type WalletBalanceResponse struct {
 	Lamports uint64
 }
 
-func GetWalletBalance(walletAddress string) (WalletBalanceResponse, error) {
+func getWalletBalance(walletAddress string) (WalletBalanceResponse, error) {
 	var res WalletBalanceResponse
 	var err error
-
-	fmt.Println(walletAddress, "--------------------------------------")
 
 	// Use correct Testnet RPC URL
 	client := rpc.New("https://api.testnet.solana.com")
@@ -41,11 +38,6 @@ func GetWalletBalance(walletAddress string) (WalletBalanceResponse, error) {
 
 	// Extract lamports (balance) and store it in the response
 	res.Lamports = accountInfo.Value.Lamports
-
-	// Print wallet address and account details for debugging
-	fmt.Printf("Wallet Address: %s\n", pubKey.String())
-	fmt.Printf("Account Lamports: %d\n", accountInfo.Value.Lamports)
-	fmt.Printf("Account Owner: %x\n", accountInfo.Value.Owner)
 
 	return res, nil
 }

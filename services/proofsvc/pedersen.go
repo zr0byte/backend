@@ -1,4 +1,4 @@
-package zkp
+package proofsvc
 
 import (
 	"math/big"
