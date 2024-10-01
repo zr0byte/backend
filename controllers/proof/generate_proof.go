@@ -1,50 +1,31 @@
 package proof
 
 import (
-	"0byte/helpers"
-	"0byte/models"
-	"0byte/zkp"
-	"net/http"
+	"0byte/zeroerrors"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GenerateProof(ctx *gin.Context) {
-	var req models.ProofRequestObject
-	var res models.ZKProofResponse
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": "bad request",
-			"success": false,
-		})
+/* -------------------------------------------------------------------------- */
+/*                               Generate Proof                               */
+/* -------------------------------------------------------------------------- */
+func (h *Proofhandler) GenerateProof(ctx *gin.Context) {
+	req, err := validateProofRequest(ctx)
+	if err != nil {
+		zeroerrors.Validation(ctx, err.Error())
 		return
 	}
 
-	walletBalance, err := helpers.GetWalletBalance(req.SendersAddress)
+	baseRes, res, err := h.proofSvc.GenerateProof(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-			"data":  res,
-		})
-
+		zeroerrors.InternalServer(ctx, err.Error())
 		return
 	}
-
-	req.SendersBalance = float64(walletBalance.Lamports)
-
-	res, err = zkp.GenerateZKProof(req)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-			"data":  res,
-		})
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"response": res,
+	ctx.JSON(200, gin.H{
+		"success":     baseRes.Success,
+		"status_code": baseRes.StatusCode,
+		"data":        res,
+		"message":     baseRes.Message,
 	})
-
-	return
 
 }
