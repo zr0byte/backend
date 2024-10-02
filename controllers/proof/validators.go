@@ -27,10 +27,10 @@ func validateProofRequest(ctx *gin.Context) (proofsvc.ProofRequestObject, error)
 	}
 
 	// validate request body
-	err = validateReqBody(req)
-	if err != nil {
-		return req, err
-	}
+	// err = validateReqBody(req)
+	// if err != nil {
+	// 	return req, err
+	// }
 
 	// convert sol to lamports
 	// req.Amount = solToLamports(req.Amount)
