@@ -17,7 +17,7 @@ func getWalletBalance(walletAddress string) (WalletBalanceResponse, error) {
 	var err error
 
 	// Use correct Testnet RPC URL
-	client := rpc.New("https://api.testnet.solana.com")
+	client := rpc.New("https://api.devnet.solana.com")
 
 	// Convert the string wallet address to solana.PublicKey
 	pubKey, err := solana.PublicKeyFromBase58(walletAddress)
