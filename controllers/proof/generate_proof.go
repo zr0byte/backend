@@ -2,6 +2,7 @@ package proof
 
 import (
 	"0byte/zeroerrors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,6 +12,7 @@ import (
 /* -------------------------------------------------------------------------- */
 func (h *Proofhandler) GenerateProof(ctx *gin.Context) {
 	req, err := validateProofRequest(ctx)
+	fmt.Println("validation error : ", err)
 	if err != nil {
 		zeroerrors.Validation(ctx, err.Error())
 		return
