@@ -19,6 +19,7 @@ func (h *Proofhandler) GenerateProof(ctx *gin.Context) {
 	}
 
 	baseRes, res, err := h.proofSvc.GenerateProof(ctx, req)
+	fmt.Println("server error : ", err)
 	if err != nil {
 		zeroerrors.InternalServer(ctx, err.Error())
 		return
